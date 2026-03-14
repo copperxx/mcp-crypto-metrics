@@ -1,0 +1,16 @@
+{
+  "name": "mcp-crypto-metrics",
+  "version": "1.0.0",
+  "description": "Hybrid MCP Server for crypto metrics (Coingecko + Defillama)",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {},
+  "keywords": ["mcp", "crypto", "bitcoin", "ethereum", "defillama", "coingecko"]
+}
