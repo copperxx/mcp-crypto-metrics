@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import Anthropic from "@anthropic-sdk/sdk";
-
-const client = new Anthropic();
 
 // MCP Server tools definition
 const tools = [
