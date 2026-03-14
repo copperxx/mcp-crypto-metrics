@@ -2,43 +2,19 @@
 
 import http from "http";
 
-async function fetchCoingecko(endpoint) {
-  const response = await fetch(
-    `https://api.coingecko.com/api/v3${endpoint}`
-  );
-  if (!response.ok) throw new Error(`Coingecko API error: ${response.status}`);
-  return response.json();
-}
-
 async function fetchDefillama(endpoint) {
   const response = await fetch(`https://api.llama.fi${endpoint}`);
   if (!response.ok) throw new Error(`Defillama API error: ${response.status}`);
   return response.json();
 }
 
-async function getBtcEthDominance() {
-  const data = await fetchCoingecko("/global?include_market_cap_change_percentage=true");
-  return {
-    btc_dominance: data.data.btc_market_cap_percentage.toFixed(2),
-    eth_dominance: data.data.eth_market_cap_percentage.toFixed(2),
-    total_market_cap_usd: data.data.total_market_cap.usd.toLocaleString("en-US", { maximumFractionDigits: 0 }),
-    total_volume_24h_usd: data.data.total_volume.usd.toLocaleString("en-US", { maximumFractionDigits: 0 }),
-  };
+async function fetchGeckoTerminal(endpoint) {
+  const response = await fetch(`https://api.geckoterminal.com/api/v2${endpoint}`);
+  if (!response.ok) throw new Error(`GeckoTerminal API error: ${response.status}`);
+  return response.json();
 }
 
-async function getMarketCapData(limit = 20) {
-  const data = await fetchCoingecko(`/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&sparkline=false&price_change_percentage=24h`);
-  return data.map((coin) => ({
-    rank: coin.market_cap_rank,
-    symbol: coin.symbol.toUpperCase(),
-    name: coin.name,
-    price_usd: coin.current_price,
-    market_cap_usd: coin.market_cap ? coin.market_cap.toLocaleString("en-US") : "N/A",
-    change_24h: coin.price_change_percentage_24h?.toFixed(2),
-    volume_24h_usd: coin.total_volume ? coin.total_volume.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
-  }));
-}
-
+// Defillama tools
 async function getDefiTvl(limit = 15) {
   const data = await fetchDefillama("/protocols");
   const sorted = data.sort((a, b) => b.tvl - a.tvl).slice(0, limit);
@@ -46,45 +22,9 @@ async function getDefiTvl(limit = 15) {
     name: protocol.name,
     tvl_usd: protocol.tvl ? protocol.tvl.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
     change_7d: protocol.change_7d ? protocol.change_7d.toFixed(2) : "N/A",
+    change_30d: protocol.change_30d ? protocol.change_30d.toFixed(2) : "N/A",
     category: protocol.category || "N/A",
   }));
-}
-
-async function getStakingMetrics() {
-  try {
-    const eth = await fetchCoingecko("/coins/ethereum");
-    return {
-      eth_price: eth.market_data.current_price.usd,
-      eth_market_cap: eth.market_data.market_cap.usd.toLocaleString("en-US", { maximumFractionDigits: 0 }),
-    };
-  } catch (error) {
-    return { error: error.message };
-  }
-}
-
-async function getVolumeMetrics(limit = 15) {
-  const data = await fetchCoingecko(`/coins/markets?vs_currency=usd&order=volume_desc&per_page=${limit}`);
-  return data.map((coin) => ({
-    symbol: coin.symbol.toUpperCase(),
-    name: coin.name,
-    price: coin.current_price,
-    volume_24h: coin.total_volume ? coin.total_volume.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
-  }));
-}
-
-async function analyzeCycleMetrics() {
-  const dominance = await getBtcEthDominance();
-  const btc = await fetchCoingecko("/coins/bitcoin?localization=false&market_data=true");
-  const eth = await fetchCoingecko("/coins/ethereum?localization=false&market_data=true");
-  const mayer_multiple = btc.market_data.current_price.usd / 150000;
-  return {
-    btc_price: btc.market_data.current_price.usd.toLocaleString("en-US"),
-    eth_price: eth.market_data.current_price.usd.toLocaleString("en-US"),
-    btc_dominance: dominance.btc_dominance,
-    eth_dominance: dominance.eth_dominance,
-    mayer_multiple_proxy: mayer_multiple.toFixed(2),
-    signal: mayer_multiple < 1 ? "Undervalued" : mayer_multiple > 2.4 ? "Overvalued" : "Fair value",
-  };
 }
 
 async function getProtocolMetrics(protocol_name) {
@@ -95,30 +35,60 @@ async function getProtocolMetrics(protocol_name) {
     name: found.name,
     tvl_usd: found.tvl ? found.tvl.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
     change_7d: found.change_7d ? found.change_7d.toFixed(2) : "N/A",
+    change_30d: found.change_30d ? found.change_30d.toFixed(2) : "N/A",
     category: found.category,
   };
 }
 
-async function getMarketSummary() {
-  const dominance = await getBtcEthDominance();
-  return {
-    total_market_cap_usd: dominance.total_market_cap_usd,
-    total_volume_24h_usd: dominance.total_volume_24h_usd,
-    btc_dominance: dominance.btc_dominance,
-    eth_dominance: dominance.eth_dominance,
-  };
+async function getDefiChains() {
+  const data = await fetchDefillama("/chains");
+  return data.map((chain) => ({
+    name: chain.name,
+    tvl_usd: chain.tvl ? chain.tvl.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
+    change_7d: chain.change7d ? chain.change7d.toFixed(2) : "N/A",
+  }));
+}
+
+// GeckoTerminal tools
+async function getDexData(network = "ethereum") {
+  const data = await fetchGeckoTerminal(`/networks/${network}/dexes`);
+  return data.data.slice(0, 10).map((dex) => ({
+    name: dex.attributes.name,
+    network: network,
+    trade_24h: dex.attributes.trade_volume_24h_usd ? dex.attributes.trade_volume_24h_usd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
+  }));
+}
+
+async function getTopTokens(network = "ethereum", limit = 15) {
+  const data = await fetchGeckoTerminal(`/networks/${network}/tokens?page=1&limit=${limit}`);
+  return data.data.map((token) => ({
+    name: token.attributes.name,
+    symbol: token.attributes.symbol.toUpperCase(),
+    price_usd: token.attributes.price_usd ? parseFloat(token.attributes.price_usd).toFixed(2) : "N/A",
+    market_cap: token.attributes.market_cap_usd ? token.attributes.market_cap_usd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
+    volume_24h: token.attributes.trading_volume_24h_usd ? token.attributes.trading_volume_24h_usd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
+  }));
+}
+
+async function getTopPools(network = "ethereum", limit = 15) {
+  const data = await fetchGeckoTerminal(`/networks/${network}/pools?page=1&limit=${limit}`);
+  return data.data.map((pool) => ({
+    name: pool.attributes.name,
+    base_token: pool.attributes.base_token_symbol,
+    quote_token: pool.attributes.quote_token_symbol,
+    tvl: pool.attributes.reserve_in_usd ? pool.attributes.reserve_in_usd.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A",
+    volume_24h: pool.attributes.volume_usd ? pool.attributes.volume_usd.get24h ? pool.attributes.volume_usd.get24h.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A" : "N/A",
+  }));
 }
 
 async function processToolCall(toolName, toolInput) {
   switch (toolName) {
-    case "get_btc_eth_dominance": return await getBtcEthDominance();
-    case "get_market_cap_data": return await getMarketCapData(toolInput?.limit || 20);
     case "get_defi_tvl": return await getDefiTvl(toolInput?.limit || 15);
-    case "get_staking_metrics": return await getStakingMetrics();
-    case "get_volume_metrics": return await getVolumeMetrics(toolInput?.limit || 15);
-    case "analyze_cycle_metrics": return await analyzeCycleMetrics();
     case "get_protocol_metrics": return await getProtocolMetrics(toolInput?.protocol_name || "Aave");
-    case "get_market_summary": return await getMarketSummary();
+    case "get_defi_chains": return await getDefiChains();
+    case "get_dex_data": return await getDexData(toolInput?.network || "ethereum");
+    case "get_top_tokens": return await getTopTokens(toolInput?.network || "ethereum", toolInput?.limit || 15);
+    case "get_top_pools": return await getTopPools(toolInput?.network || "ethereum", toolInput?.limit || 15);
     default: return { error: `Unknown tool: ${toolName}` };
   }
 }
@@ -155,7 +125,7 @@ const server = http.createServer(async (req, res) => {
             result: {
               protocolVersion: "2024-11-05",
               capabilities: { tools: {} },
-              serverInfo: { name: "mcp-crypto-metrics", version: "1.0.0" },
+              serverInfo: { name: "mcp-crypto-metrics", version: "2.0.0" },
             },
           }));
           return;
@@ -167,14 +137,12 @@ const server = http.createServer(async (req, res) => {
             id: request.id,
             result: {
               tools: [
-                { name: "get_btc_eth_dominance", description: "Get BTC/ETH dominance", inputSchema: { type: "object", properties: {} } },
-                { name: "get_market_cap_data", description: "Top coins by market cap", inputSchema: { type: "object", properties: { limit: { type: "number" } } } },
-                { name: "get_defi_tvl", description: "DeFi protocols TVL", inputSchema: { type: "object", properties: { limit: { type: "number" } } } },
-                { name: "get_staking_metrics", description: "ETH staking", inputSchema: { type: "object", properties: {} } },
-                { name: "get_volume_metrics", description: "Trading volume leaders", inputSchema: { type: "object", properties: { limit: { type: "number" } } } },
-                { name: "analyze_cycle_metrics", description: "BTC/ETH cycle analysis", inputSchema: { type: "object", properties: {} } },
-                { name: "get_protocol_metrics", description: "Specific protocol metrics", inputSchema: { type: "object", properties: { protocol_name: { type: "string" } } } },
-                { name: "get_market_summary", description: "Market summary", inputSchema: { type: "object", properties: {} } },
+                { name: "get_defi_tvl", description: "Top DeFi protocols by TVL", inputSchema: { type: "object", properties: { limit: { type: "number" } } } },
+                { name: "get_protocol_metrics", description: "Specific protocol metrics (Aave, Curve, etc.)", inputSchema: { type: "object", properties: { protocol_name: { type: "string" } } } },
+                { name: "get_defi_chains", description: "DeFi TVL by blockchain", inputSchema: { type: "object", properties: {} } },
+                { name: "get_dex_data", description: "DEX trading volume by network (Ethereum, Solana, etc.)", inputSchema: { type: "object", properties: { network: { type: "string" } } } },
+                { name: "get_top_tokens", description: "Top tokens by market cap on a network", inputSchema: { type: "object", properties: { network: { type: "string" }, limit: { type: "number" } } } },
+                { name: "get_top_pools", description: "Top liquidity pools on a DEX", inputSchema: { type: "object", properties: { network: { type: "string" }, limit: { type: "number" } } } },
               ],
             },
           }));
