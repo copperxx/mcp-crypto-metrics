@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import http from "http";
+import { Server } from "@anthropic-ai/sdk/lib/resources/messages/streaming.mjs";
 
 const tools = [
   { name: "get_defi_protocols", description: "Top DeFi protocols by TVL (Defillama)", input_schema: { type: "object", properties: {} } },
@@ -88,6 +88,8 @@ async function processToolCall(toolName) {
   }
 }
 
+import http from "http";
+
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -105,18 +107,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.writeHead(200);
     
-    const init = {
-      jsonrpc: "2.0",
-      result: {
-        protocolVersion: "2024-11-05",
-        capabilities: ["tools"],
-        serverInfo: {
-          name: "crypto-metrics-mcp",
-          version: "1.0.0"
-        }
-      }
-    };
-    
+    const init = { jsonrpc: "2.0", result: { protocolVersion: "2024-11-05", capabilities: ["tools"], serverInfo: { name: "crypto-mcp", version: "1.0.0" } } };
     res.write(`data: ${JSON.stringify(init)}\n\n`);
     res.end();
     return;
@@ -135,31 +126,15 @@ const server = http.createServer(async (req, res) => {
       try {
         const request = JSON.parse(body);
         const id = request.id;
-
         let response;
+
         if (request.method === "initialize") {
-          response = {
-            jsonrpc: "2.0",
-            id,
-            result: {
-              protocolVersion: "2024-11-05",
-              capabilities: ["tools"],
-              serverInfo: { name: "crypto-metrics-mcp", version: "1.0.0" }
-            }
-          };
+          response = { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: ["tools"], serverInfo: { name: "crypto-mcp", version: "1.0.0" } } };
         } else if (request.method === "tools/list") {
-          response = {
-            jsonrpc: "2.0",
-            id,
-            result: { tools }
-          };
+          response = { jsonrpc: "2.0", id, result: { tools } };
         } else if (request.method === "tools/call") {
           const result = await processToolCall(request.params.name);
-          response = {
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
-          };
+          response = { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] } };
         } else {
           response = { jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } };
         }
@@ -167,11 +142,7 @@ const server = http.createServer(async (req, res) => {
         res.write(`data: ${JSON.stringify(response)}\n\n`);
         res.end();
       } catch (error) {
-        const errorResponse = {
-          jsonrpc: "2.0",
-          error: { code: -32700, message: error.message }
-        };
-        res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
+        res.write(`data: ${JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: error.message } })}\n\n`);
         res.end();
       }
     });
@@ -191,5 +162,5 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`MCP Server on port ${PORT} - 34 crypto tools`);
+  console.log(`MCP Server on port ${PORT} - 34 tools ready`);
 });
