@@ -1,41 +1,43 @@
 #!/usr/bin/env node
-import { Server } from "@anthropic-ai/sdk/lib/resources/messages/streaming.mjs";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, TextContent } from "@modelcontextprotocol/sdk/types.js";
 
 const tools = [
-  { name: "get_defi_protocols", description: "Top DeFi protocols by TVL (Defillama)", input_schema: { type: "object", properties: {} } },
-  { name: "get_blockchain_tvl", description: "TVL by blockchain (Defillama)", input_schema: { type: "object", properties: {} } },
-  { name: "get_protocol_fees", description: "Protocol fees and revenue 24h (Defillama)", input_schema: { type: "object", properties: {} } },
-  { name: "get_global_market", description: "Global market cap, dominance, volume (Coingecko)", input_schema: { type: "object", properties: {} } },
-  { name: "get_trending_coins", description: "Trending coins (Coingecko)", input_schema: { type: "object", properties: {} } },
-  { name: "get_defi_metrics", description: "DeFi market metrics (Coingecko)", input_schema: { type: "object", properties: {} } },
-  { name: "get_coin_prices", description: "Prices for Bitcoin, Ethereum, major coins (Coingecko)", input_schema: { type: "object", properties: {} } },
-  { name: "get_market_top_100", description: "Top 100 coins by market cap (Coingecko)", input_schema: { type: "object", properties: {} } },
-  { name: "get_exchange_24h", description: "24h exchange data - BTC, ETH, top pairs (Binance)", input_schema: { type: "object", properties: {} } },
-  { name: "get_klines", description: "BTCUSDT klines - 30 days (Binance)", input_schema: { type: "object", properties: {} } },
-  { name: "get_top_100_cmc", description: "Top 100 coins (CoinMarketCap)", input_schema: { type: "object", properties: {} } },
-  { name: "get_fear_greed", description: "Fear & Greed Index", input_schema: { type: "object", properties: {} } },
-  { name: "get_bitcoin_onchain", description: "Bitcoin on-chain stats (Blockchair)", input_schema: { type: "object", properties: {} } },
-  { name: "get_ethereum_onchain", description: "Ethereum on-chain stats (Blockchair)", input_schema: { type: "object", properties: {} } },
-  { name: "get_btc_total_supply", description: "Total BTC supply (Blockchain.info)", input_schema: { type: "object", properties: {} } },
-  { name: "get_btc_hashrate", description: "Bitcoin network hashrate (Blockchain.info)", input_schema: { type: "object", properties: {} } },
-  { name: "get_active_addresses", description: "Bitcoin active addresses (Glassnode)", input_schema: { type: "object", properties: {} } },
-  { name: "get_protocol_revenue", description: "Protocol revenue metrics (TokenTerminal)", input_schema: { type: "object", properties: {} } },
-  { name: "get_exchange_flows", description: "Exchange inflow/outflow data (CryptoQuant)", input_schema: { type: "object", properties: {} } },
-  { name: "get_crypto_assets", description: "Crypto assets data (Messari)", input_schema: { type: "object", properties: {} } },
-  { name: "get_mempool_fees", description: "Bitcoin mempool fees recommended (Mempool.space)", input_schema: { type: "object", properties: {} } },
-  { name: "get_mining_pools", description: "Bitcoin mining pool stats (MiningPoolStats)", input_schema: { type: "object", properties: {} } },
-  { name: "get_futures_openinterest", description: "Futures open interest (CoinGlass)", input_schema: { type: "object", properties: {} } },
-  { name: "get_funding_rates", description: "Perpetual funding rates (CoinGlass)", input_schema: { type: "object", properties: {} } },
-  { name: "get_liquidations", description: "Liquidation data (CoinGlass)", input_schema: { type: "object", properties: {} } },
-  { name: "get_bybit_spot", description: "Bybit spot trading data (Bybit)", input_schema: { type: "object", properties: {} } },
-  { name: "get_gecko_networks", description: "DEX networks (GeckoTerminal)", input_schema: { type: "object", properties: {} } },
-  { name: "get_santiment_signals", description: "Social signals (Santiment)", input_schema: { type: "object", properties: {} } },
-  { name: "get_coin_rankings", description: "Coin rankings (CoinPaprika)", input_schema: { type: "object", properties: {} } },
-  { name: "get_coinrank_markets", description: "Market rankings (CoinRank)", input_schema: { type: "object", properties: {} } },
-  { name: "get_nansen_wallets", description: "Top wallet activity (Nansen)", input_schema: { type: "object", properties: {} } },
-  { name: "get_okutrade_positions", description: "Options positions (OkuTrade)", input_schema: { type: "object", properties: {} } },
-  { name: "get_dune_query", description: "Dune Analytics query (Dune)", input_schema: { type: "object", properties: {} } },
-  { name: "get_defipulse_ranking", description: "DeFi protocol ranking (DefiPulse)", input_schema: { type: "object", properties: {} } },
+  { name: "get_defi_protocols", description: "Top DeFi protocols by TVL (Defillama)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_blockchain_tvl", description: "TVL by blockchain (Defillama)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_protocol_fees", description: "Protocol fees and revenue 24h (Defillama)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_global_market", description: "Global market cap, dominance, volume (Coingecko)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_trending_coins", description: "Trending coins (Coingecko)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_defi_metrics", description: "DeFi market metrics (Coingecko)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_coin_prices", description: "Prices for Bitcoin, Ethereum, major coins (Coingecko)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_market_top_100", description: "Top 100 coins by market cap (Coingecko)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_exchange_24h", description: "24h exchange data - BTC, ETH, top pairs (Binance)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_klines", description: "BTCUSDT klines - 30 days (Binance)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_top_100_cmc", description: "Top 100 coins (CoinMarketCap)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_fear_greed", description: "Fear & Greed Index", inputSchema: { type: "object", properties: {} } },
+  { name: "get_bitcoin_onchain", description: "Bitcoin on-chain stats (Blockchair)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_ethereum_onchain", description: "Ethereum on-chain stats (Blockchair)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_btc_total_supply", description: "Total BTC supply (Blockchain.info)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_btc_hashrate", description: "Bitcoin network hashrate (Blockchain.info)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_active_addresses", description: "Bitcoin active addresses (Glassnode)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_protocol_revenue", description: "Protocol revenue metrics (TokenTerminal)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_exchange_flows", description: "Exchange inflow/outflow data (CryptoQuant)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_crypto_assets", description: "Crypto assets data (Messari)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_mempool_fees", description: "Bitcoin mempool fees recommended (Mempool.space)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_mining_pools", description: "Bitcoin mining pool stats (MiningPoolStats)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_futures_openinterest", description: "Futures open interest (CoinGlass)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_funding_rates", description: "Perpetual funding rates (CoinGlass)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_liquidations", description: "Liquidation data (CoinGlass)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_bybit_spot", description: "Bybit spot trading data (Bybit)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_gecko_networks", description: "DEX networks (GeckoTerminal)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_santiment_signals", description: "Social signals (Santiment)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_coin_rankings", description: "Coin rankings (CoinPaprika)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_coinrank_markets", description: "Market rankings (CoinRank)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_nansen_wallets", description: "Top wallet activity (Nansen)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_okutrade_positions", description: "Options positions (OkuTrade)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_dune_query", description: "Dune Analytics query (Dune)", inputSchema: { type: "object", properties: {} } },
+  { name: "get_defipulse_ranking", description: "DeFi protocol ranking (DefiPulse)", inputSchema: { type: "object", properties: {} } },
 ];
 
 async function fetchAPI(url) {
@@ -88,79 +90,29 @@ async function processToolCall(toolName) {
   }
 }
 
-import http from "http";
-
-const server = http.createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(200);
-    res.end();
-    return;
+const server = new Server({
+  name: "crypto-metrics-mcp",
+  version: "1.0.0",
+}, {
+  capabilities: {
+    tools: {}
   }
-
-  if (req.url === "/" && req.method === "GET") {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.writeHead(200);
-    
-    const init = { jsonrpc: "2.0", result: { protocolVersion: "2024-11-05", capabilities: ["tools"], serverInfo: { name: "crypto-mcp", version: "1.0.0" } } };
-    res.write(`data: ${JSON.stringify(init)}\n\n`);
-    res.end();
-    return;
-  }
-
-  if (req.url === "/" && req.method === "POST") {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.writeHead(200);
-
-    let body = "";
-    req.on("data", (chunk) => { body += chunk; });
-
-    req.on("end", async () => {
-      try {
-        const request = JSON.parse(body);
-        const id = request.id;
-        let response;
-
-        if (request.method === "initialize") {
-          response = { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: ["tools"], serverInfo: { name: "crypto-mcp", version: "1.0.0" } } };
-        } else if (request.method === "tools/list") {
-          response = { jsonrpc: "2.0", id, result: { tools } };
-        } else if (request.method === "tools/call") {
-          const result = await processToolCall(request.params.name);
-          response = { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] } };
-        } else {
-          response = { jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } };
-        }
-
-        res.write(`data: ${JSON.stringify(response)}\n\n`);
-        res.end();
-      } catch (error) {
-        res.write(`data: ${JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: error.message } })}\n\n`);
-        res.end();
-      }
-    });
-    return;
-  }
-
-  if (req.url === "/health") {
-    res.setHeader("Content-Type", "application/json");
-    res.writeHead(200);
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
-  }
-
-  res.writeHead(404);
-  res.end("Not found");
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`MCP Server on port ${PORT} - 34 tools ready`);
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return { tools };
 });
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const result = await processToolCall(request.params.name);
+  return {
+    content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+  };
+});
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+main().catch(console.error);
