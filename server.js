@@ -88,13 +88,9 @@ async function processToolCall(toolName) {
   }
 }
 
-function sendSSE(res, event, data) {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
-}
-
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
@@ -108,8 +104,20 @@ const server = http.createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.writeHead(200);
-
-    sendSSE(res, "message", { type: "initialize", serverVersion: "1.0" });
+    
+    const init = {
+      jsonrpc: "2.0",
+      result: {
+        protocolVersion: "2024-11-05",
+        capabilities: ["tools"],
+        serverInfo: {
+          name: "crypto-metrics-mcp",
+          version: "1.0.0"
+        }
+      }
+    };
+    
+    res.write(`data: ${JSON.stringify(init)}\n\n`);
     res.end();
     return;
   }
@@ -126,20 +134,44 @@ const server = http.createServer(async (req, res) => {
     req.on("end", async () => {
       try {
         const request = JSON.parse(body);
+        const id = request.id;
 
+        let response;
         if (request.method === "initialize") {
-          sendSSE(res, "message", { type: "initialize", serverVersion: "1.0" });
+          response = {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: ["tools"],
+              serverInfo: { name: "crypto-metrics-mcp", version: "1.0.0" }
+            }
+          };
         } else if (request.method === "tools/list") {
-          sendSSE(res, "message", { type: "resource", resource: { type: "list", tools } });
+          response = {
+            jsonrpc: "2.0",
+            id,
+            result: { tools }
+          };
         } else if (request.method === "tools/call") {
           const result = await processToolCall(request.params.name);
-          sendSSE(res, "message", { type: "resource", resource: { type: "result", content: [{ type: "text", text: JSON.stringify(result, null, 2) }] } });
+          response = {
+            jsonrpc: "2.0",
+            id,
+            result: { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
+          };
         } else {
-          sendSSE(res, "error", { error: "Unknown method" });
+          response = { jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } };
         }
+
+        res.write(`data: ${JSON.stringify(response)}\n\n`);
         res.end();
       } catch (error) {
-        sendSSE(res, "error", { error: error.message });
+        const errorResponse = {
+          jsonrpc: "2.0",
+          error: { code: -32700, message: error.message }
+        };
+        res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
         res.end();
       }
     });
@@ -159,5 +191,5 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`SSE MCP Server on port ${PORT} - 34 crypto tools ready`);
+  console.log(`MCP Server on port ${PORT} - 34 crypto tools`);
 });
