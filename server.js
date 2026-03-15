@@ -147,7 +147,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/") {
+  if (req.method === "POST" && req.url === "/") || req.url === "/mcp")) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
