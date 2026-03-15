@@ -140,6 +140,7 @@ import http from "http";
 const server = http.createServer(async (req, res) => {
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     res.writeHead(200);
@@ -147,7 +148,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/") || req.url === "/mcp")) {
+  if (req.method === "POST" && (req.url === "/" || req.url === "/mcp")) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
